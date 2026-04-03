@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI: Separator, Not Destroyer — 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Inter:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+:root{
+  --c:#00f5ff;--p:#bf00ff;--pk:#ff0090;--y:#ffe600;--g:#00ff88;
+  --bg:#000008;--bg2:#060b18;--card:rgba(6,11,24,.85);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg)}
+body{font-family:'Inter',sans-serif;color:#fff}
+.orb{font-family:'Orbitron',sans-serif}
+.mono{font-family:'Share Tech Mono',monospace}
+
+/* ── GLOBAL CANVAS & OVERLAYS ── */
+#neuralCanvas{position:fixed;inset:0;z-index:0;opacity:.55}
+#scanlines{position:fixed;inset:0;z-index:2;pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.04) 2px,rgba(0,0,0,.04) 4px)}
+#scanlines::after{content:'';position:absolute;left:0;right:0;height:4px;
+  background:linear-gradient(transparent,rgba(0,245,255,.06),transparent);
+  animation:scanMove 6s linear infinite}
+
+/* ── PROGRESS BAR ── */
+#progressBar{position:fixed;top:0;left:0;height:3px;z-index:100;
+  background:linear-gradient(90deg,var(--c),var(--p),var(--pk));
+  box-shadow:0 0 12px var(--c);transition:width .6s cubic-bezier(.4,0,.2,1)}
+
+/* ── TOP BAR ── */
+#topBar{position:fixed;top:0;left:0;right:0;z-index:30;height:50px;
+  display:flex;align-items:center;padding:0 28px;gap:20px;
+  background:rgba(0,0,8,.92);border-bottom:1px solid rgba(0,245,255,.1);
+  backdrop-filter:blur(16px)}
+#topLogo{font-size:11px;color:var(--c);letter-spacing:4px;
+  text-shadow:0 0 14px var(--c);animation:pulse 3s ease-in-out infinite;white-space:nowrap}
+#topDots{display:flex;gap:6px;margin:0 auto;align-items:center}
+#slideCounter{font-size:11px;color:#333;letter-spacing:1px;white-space:nowrap;font-family:'Share Tech Mono',monospace}
+
+/* ── SLIDES CONTAINER ── */
+#slidesWrap{position:fixed;inset:50px 0 48px;z-index:5;overflow:hidden}
+.slide{position:absolute;inset:0;display:none;overflow:hidden}
+.slide.active{display:flex;flex-direction:column}
+
+/* ── VIDEO BACKGROUNDS ── */
+.vbg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
+.overlay{position:absolute;inset:0;z-index:1}
+.overlay-dark{background:radial-gradient(ellipse at center,rgba(0,0,8,.2) 0%,rgba(0,0,8,.88) 100%)}
+.overlay-cyber{background:linear-gradient(135deg,rgba(0,0,8,.75) 0%,rgba(0,21,51,.65) 50%,rgba(0,0,8,.82) 100%)}
+.overlay-img{background:rgba(0,0,8,.78)}
+
+/* ── SLIDE CONTENT WRAPPER ── */
+.ct{position:relative;z-index:3;flex:1;display:flex;flex-direction:column;justify-content:center;padding:18px 52px;overflow:hidden}
+.ct-center{align-items:center;text-align:center}
+.ct-left{align-items:flex-start}
+
+/* ── PIP VIDEOS ── */
+.pip{position:absolute;border-radius:12px;overflow:hidden;z-index:4;
+  border:1px solid rgba(0,245,255,.4);box-shadow:0 0 30px rgba(0,245,255,.2),0 0 60px rgba(0,245,255,.1);
+  animation:pipFloat 4s ease-in-out infinite}
+.pip-label{position:absolute;top:7px;left:10px;font-size:8px;letter-spacing:2px;
+  font-family:'Share Tech Mono',monospace;z-index:5}
+
+/* ── CARDS ── */
+.card{border-radius:10px;background:var(--card);backdrop-filter:blur(12px);
+  border:1px solid rgba(0,245,255,.15);
+  box-shadow:0 8px 32px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.05);
+  transition:transform .3s ease,box-shadow .3s ease}
+.card:hover{transform:translateY(-4px);box-shadow:0 16px 48px rgba(0,0,0,.5),0 0 24px rgba(0,245,255,.15)}
+.card-cyan{border-color:rgba(0,245,255,.25);box-shadow:0 8px 32px rgba(0,245,255,.08),inset 0 1px 0 rgba(0,245,255,.05)}
+.card-purple{border-color:rgba(191,0,255,.25);box-shadow:0 8px 32px rgba(191,0,255,.08)}
+.card-green{border-color:rgba(0,255,136,.25);box-shadow:0 8px 32px rgba(0,255,136,.08)}
+.card-pink{border-color:rgba(255,0,144,.25);box-shadow:0 8px 32px rgba(255,0,144,.08)}
+.card-yellow{border-color:rgba(255,230,0,.25);box-shadow:0 8px 32px rgba(255,230,0,.08)}
+
+/* ── GLITCH EFFECT ── */
+.glitch{position:relative}
+.glitch::before,.glitch::after{content:attr(data-text);position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none}
+.glitch::before{color:#ff0090;clip-path:polygon(0 0,100% 0,100% 35%,0 35%);animation:ga 2.6s infinite}
+.glitch::after{color:#00f5ff;clip-path:polygon(0 65%,100% 65%,100% 100%,0 100%);animation:gb 2.6s infinite}
+
+/* ── BADGES & TOKENS ── */
+.badge{border-radius:5px;padding:5px 13px;font-size:11px;font-family:'Share Tech Mono',monospace;display:inline-block}
+.dot-nav{width:7px;height:7px;border-radius:4px;cursor:pointer;transition:all .35s;border:none;outline:none}
+.dot-nav.on{width:28px;box-shadow:0 0 12px var(--c)}
+
+/* ── BARS ── */
+.bar-track{background:rgba(255,255,255,.06);border-radius:4px;height:6px;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px;width:0;transition:width 1.6s cubic-bezier(.4,0,.2,1)}
+
+/* ── MATRIX CHARS ── */
+.mch{position:absolute;font-family:'Share Tech Mono',monospace;color:#00ff41;
+  text-shadow:0 0 6px #00ff41;animation:mfall linear infinite;pointer-events:none;z-index:0}
+
+/* ── RINGS ── */
+.ring{position:absolute;border-radius:50%;border:1px solid rgba(0,245,255,.07);
+  left:50%;top:50%;transform:translate(-50%,-50%)}
+
+/* ── BOTTOM BAR ── */
+#bottomBar{position:fixed;bottom:0;left:0;right:0;z-index:30;height:48px;
+  display:flex;align-items:center;justify-content:space-between;padding:0 28px;
+  background:rgba(0,0,8,.92);border-top:1px solid rgba(0,245,255,.1);backdrop-filter:blur(16px)}
+.navBtn{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--c);
+  background:transparent;border:1px solid rgba(0,245,255,.25);padding:7px 22px;
+  border-radius:5px;cursor:pointer;letter-spacing:2px;transition:all .2s;
+  box-shadow:0 0 10px rgba(0,245,255,.08)}
+.navBtn:hover{box-shadow:0 0 24px rgba(0,245,255,.4);background:rgba(0,245,255,.05)}
+.navBtn:disabled{color:#1e1e1e;border-color:#111;box-shadow:none;cursor:default}
+#kbHint{font-size:9px;color:#1a1a1a;letter-spacing:3px;font-family:'Share Tech Mono',monospace}
+
+/* ── STAT NUMBERS ── */
+.stat-num{font-family:'Orbitron',sans-serif;font-weight:900;line-height:1}
+
+/* ── ANIMATIONS ── */
+@keyframes scanMove{0%{top:-4px}100%{top:100%}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes gc{0%,100%{text-shadow:0 0 12px var(--c),0 0 24px var(--c)}50%{text-shadow:0 0 30px var(--c),0 0 60px var(--c),0 0 90px var(--c)}}
+@keyframes gp{0%,100%{text-shadow:0 0 12px var(--p)}50%{text-shadow:0 0 30px var(--p),0 0 60px var(--p)}}
+@keyframes gy{0%,100%{text-shadow:0 0 12px var(--y)}50%{text-shadow:0 0 30px var(--y),0 0 60px var(--y)}}
+@keyframes gn{0%,100%{text-shadow:0 0 12px var(--g)}50%{text-shadow:0 0 30px var(--g),0 0 60px var(--g)}}
+@keyframes ga{0%{transform:translateX(-2px)}30%{transform:translateX(3px) skewX(1deg)}60%{transform:translateX(-1px)}100%{transform:translateX(2px)}}
+@keyframes gb{0%{transform:translateX(2px)}30%{transform:translateX(-3px) skewX(-1deg)}60%{transform:translateX(1px)}100%{transform:translateX(-2px)}}
+@keyframes spin{from{transform:translate(-50%,-50%) rotate(0)}to{transform:translate(-50%,-50%) rotate(360deg)}}
+@keyframes spinr{from{transform:translate(-50%,-50%) rotate(0)}to{transform:translate(-50%,-50%) rotate(-360deg)}}
+@keyframes mfall{0%{top:-60px;opacity:1}90%{opacity:.4}100%{top:108vh;opacity:0}}
+@keyframes pipFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+@keyframes slideIn{from{opacity:0;transform:translateY(28px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes countPop{0%{transform:scale(1)}50%{transform:scale(1.06)}100%{transform:scale(1)}}
+
+/* ── SLIDE TRANSITIONS ── */
+.slide.entering{animation:slideIn .65s cubic-bezier(.34,1.2,.64,1) both}
+.stagger-1{animation:slideIn .6s cubic-bezier(.4,0,.2,1) .05s both}
+.stagger-2{animation:slideIn .6s cubic-bezier(.4,0,.2,1) .15s both}
+.stagger-3{animation:slideIn .6s cubic-bezier(.4,0,.2,1) .28s both}
+.stagger-4{animation:slideIn .6s cubic-bezier(.4,0,.2,1) .42s both}
+.stagger-5{animation:slideIn .6s cubic-bezier(.4,0,.2,1) .58s both}
+.stagger-6{animation:slideIn .6s cubic-bezier(.4,0,.2,1) .72s both}
+
+/* ── UNSPLASH IMAGE BG ── */
+.imgbg{position:absolute;inset:0;background-size:cover;background-position:center;z-index:0}
+
+/* ── TYPEWRITER ── */
+#typewriterText{display:inline;border-right:2px solid var(--c);animation:blink .8s step-end infinite;padding-right:3px}
+
+/* ── CHART CONTAINER ── */
+.chartBox{background:rgba(0,0,8,.6);border-radius:10px;padding:16px 20px;border:1px solid rgba(0,245,255,.12);backdrop-filter:blur(8px)}
+</style>
+</head>
+<body>
+
+<!-- NEURAL NETWORK CANVAS -->
+<canvas id="neuralCanvas"></canvas>
+<div id="scanlines"></div>
+
+<!-- PROGRESS BAR -->
+<div id="progressBar" style="width:14.28%"></div>
+
+<!-- TOP BAR -->
+<div id="topBar">
+  <div id="topLogo" class="orb">AI//2026</div>
+  <div id="topDots"></div>
+  <div id="slideCounter" class="mono"></div>
+</div>
+
+<!-- SLIDES WRAPPER -->
+<div id="slidesWrap">
+
+<!-- ═══════════════════════════════════════════
+     SLIDE 0 · PORTADA — HERO
+═══════════════════════════════════════════ -->
+<div class="slide active" id="s0">
+  <video class="vbg" autoplay muted loop playsinline style="opacity:.22">
+    <source src="WhatsApp_Video_2026-04-02_at_6_13_13_PM.mp4" type="video/mp4">
+  </video>
+  <div class="overlay overlay-dark"></div>
+
+  <!-- Matrix chars -->
+  <div class="mch" style="left:2%;font-size:14px;animation-duration:2.6s;animation-delay:0s;opacity:.2">∑</div>
+  <div class="mch" style="left:7%;font-size:12px;animation-duration:3.2s;animation-delay:.4s;opacity:.16">AI</div>
+  <div class="mch" style="left:13%;font-size:15px;animation-duration:2.4s;animation-delay:.9s;opacity:.2">01</div>
+  <div class="mch" style="left:21%;font-size:13px;animation-duration:3.7s;animation-delay:.2s;opacity:.16">∇</div>
+  <div class="mch" style="left:29%;font-size:12px;animation-duration:2.1s;animation-delay:1.4s;opacity:.16">ML</div>
+  <div class="mch" style="left:38%;font-size:14px;animation-duration:3.5s;animation-delay:.7s;opacity:.2">∞</div>
+  <div class="mch" style="left:54%;font-size:12px;animation-duration:2.8s;animation-delay:.1s;opacity:.16">LLM</div>
+  <div class="mch" style="left:63%;font-size:15px;animation-duration:3s;animation-delay:1.1s;opacity:.2">β</div>
+  <div class="mch" style="left:72%;font-size:13px;animation-duration:2.6s;animation-delay:.6s;opacity:.16">GPU</div>
+  <div class="mch" style="left:80%;font-size:14px;animation-duration:3.4s;animation-delay:1.7s;opacity:.2">Ψ</div>
+  <div class="mch" style="left:88%;font-size:12px;animation-duration:2.3s;animation-delay:.3s;opacity:.16">∂</div>
+  <div class="mch" style="left:95%;font-size:15px;animation-duration:3.1s;animation-delay:.9s;opacity:.2">Ω</div>
+
+  <!-- Rings -->
+  <div class="ring" style="width:600px;height:600px;animation:spin 25s linear infinite"></div>
+  <div class="ring" style="width:460px;height:460px;animation:spinr 18s linear infinite"></div>
+  <div class="ring" style="width:320px;height:320px;animation:spin 12s linear infinite;border-color:rgba(191,0,255,.08)"></div>
+
+  <!-- PIP NEW VIDEO top-right -->
+  <div class="pip" style="right:38px;top:20px;width:220px;height:130px">
+    <video autoplay muted loop playsinline style="width:100%;height:100%;object-fit:cover;display:block">
+      <source src="WhatsApp_Video_2026-04-02_at_12_27_30_PM.mp4" type="video/mp4">
+    </video>
+    <div class="pip-label" style="color:var(--c)">// LIVE FEED</div>
+  </div>
+
+  <div class="ct ct-center" style="position:relative;z-index:3">
+    <!-- Label -->
+    <div class="stagger-1 mono" style="font-size:10px;letter-spacing:6px;color:var(--g);margin-bottom:20px;animation:pulse 2s ease-in-out infinite">
+      GROUP PRESENTATION · EXPOSICIÓN GRUPAL · 2026
+    </div>
+
+    <!-- Main title -->
+    <h1 class="glitch orb stagger-2" data-text="ARTIFICIAL INTELLIGENCE"
+      style="font-size:clamp(22px,4.2vw,60px);font-weight:900;color:#fff;letter-spacing:5px;line-height:1.05;margin-bottom:12px">
+      ARTIFICIAL INTELLIGENCE</h1>
+
+    <!-- Subtitle typewriter -->
+    <div class="stagger-3 orb" style="font-size:clamp(14px,2.2vw,28px);letter-spacing:4px;margin-bottom:28px;min-height:2em;display:flex;align-items:center;justify-content:center;gap:16px">
+      <span style="color:var(--c);text-shadow:0 0 28px var(--c);animation:gc 2s ease-in-out infinite">SEPARATOR,</span>
+      <span style="color:var(--pk);text-shadow:0 0 28px var(--pk);animation:gp 2s ease-in-out infinite">NOT DESTROYER</span>
+    </div>
+
+    <!-- Typewriter tag -->
+    <div class="stagger-4 mono" style="font-size:clamp(12px,1.4vw,16px);color:#888;margin-bottom:28px;min-height:1.5em">
+      &gt; <span id="typewriterText"></span>
+    </div>
+
+    <!-- AI Tools grid -->
+    <div id="toolsGrid" class="stagger-5" style="display:flex;flex-wrap:wrap;gap:7px;justify-content:center;max-width:860px;margin:0 auto 20px"></div>
+
+    <!-- Tokens row -->
+    <div id="tokensRow" class="stagger-6" style="display:flex;flex-wrap:wrap;gap:5px;justify-content:center;max-width:740px;margin:0 auto;opacity:.45"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     SLIDE 1 · PERSONA 1 — THE HOOK
+═══════════════════════════════════════════ -->
+<div class="slide" id="s1">
+  <video class="vbg" autoplay muted loop playsinline style="opacity:.16">
+    <source src="WhatsApp_Video_2026-04-02_at_6_13_12_PM.mp4" type="video/mp4">
+  </video>
+  <div class="overlay overlay-dark"></div>
+  <div class="mch" style="left:5%;font-size:12px;animation-duration:2.5s;animation-delay:0s;opacity:.16">RLHF</div>
+  <div class="mch" style="left:78%;font-size:12px;animation-duration:3.3s;animation-delay:.9s;opacity:.16">RAG</div>
+  <div class="mch" style="left:91%;font-size:13px;animation-duration:2.8s;animation-delay:.4s;opacity:.16">GPT</div>
+
+  <!-- PIP bottom-right -->
+  <div class="pip" style="right:36px;bottom:18px;width:210px;height:124px">
+    <video autoplay muted loop playsinline style="width:100%;height:100%;object-fit:cover;display:block">
+      <source src="WhatsApp_Video_2026-04-02_at_6_13_05_PM__1_.mp4" type="video/mp4">
+    </video>
+    <div class="pip-label" style="color:var(--c)">// LIVE</div>
+  </div>
+
+  <div class="ct ct-center" style="position:relative;z-index:3">
+    <div class="stagger-1 mono" style="font-size:10px;letter-spacing:5px;color:var(--g);margin-bottom:18px;animation:pulse 2s ease-in-out infinite">
+      // PERSONA 1 · THE HOOK · INTRODUCCIÓN
+    </div>
+
+    <!-- Audience question card -->
+    <div class="card stagger-2" style="padding:18px 32px;margin-bottom:22px;max-width:720px;width:100%">
+      <div class="mono" style="font-size:9px;color:#252525;letter-spacing:4px;margin-bottom:10px">PREGUNTA AL PÚBLICO · AUDIENCE QUESTION</div>
+      <div style="font-size:clamp(13px,1.7vw,19px);color:#bbb;line-height:1.7;font-style:italic">
+        "¿Cuántos de ustedes tienen miedo de que la IA les quite su trabajo?"<br>
+        <span style="font-size:85%;color:#666">"How many of you are afraid that AI is going to take your job?"</span>
+      </div>
+    </div>
+
+    <!-- Glitch headline -->
+    <h2 class="glitch orb stagger-3" data-text="ESA ES LA PREGUNTA EQUIVOCADA"
+      style="font-size:clamp(16px,2.8vw,42px);font-weight:900;color:#fff;letter-spacing:2px;line-height:1.2;margin-bottom:28px">
+      ESA ES LA PREGUNTA EQUIVOCADA</h2>
+
+    <!-- Split comparison -->
+    <div class="stagger-4" style="display:grid;grid-template-columns:1fr 3px 1fr;max-width:860px;width:100%;border-radius:10px;overflow:hidden;border:1px solid rgba(0,245,255,.12)">
+      <div style="padding:22px 26px;background:rgba(255,0,144,.07)">
+        <div class="mono" style="font-size:9px;color:var(--pk);letter-spacing:3px;margin-bottom:10px">✗ PREGUNTA INCORRECTA</div>
+        <div style="font-size:clamp(12px,1.4vw,15px);color:#666;line-height:1.7">"¿La IA me va a reemplazar?"<br><span style="font-size:85%">"Will AI replace me?"</span></div>
+      </div>
+      <div style="background:linear-gradient(180deg,transparent,rgba(0,245,255,.2),transparent)"></div>
+      <div style="padding:22px 26px;background:rgba(0,245,255,.06)">
+        <div class="mono" style="font-size:9px;color:var(--c);letter-spacing:3px;margin-bottom:10px">✓ PREGUNTA REAL</div>
+        <div style="font-size:clamp(12px,1.4vw,15px);color:#fff;line-height:1.7;font-weight:600">"¿Alguien que usa la IA mejor que yo me va a reemplazar?"<br><span style="font-size:85%;font-weight:400">"Will someone who uses AI better than me replace me?"</span></div>
+      </div>
+    </div>
+
+    <!-- Quote -->
+    <div class="stagger-5" style="margin-top:20px;padding:14px 28px;border-left:3px solid var(--p);background:rgba(191,0,255,.06);border-radius:0 8px 8px 0;max-width:760px;width:100%;text-align:left">
+      <div style="font-size:13px;color:var(--p);font-style:italic;line-height:1.6;text-shadow:0 0 16px var(--p)">
+        "AI is not a monster that eats jobs. It is a mirror — it shows very clearly who is growing, and who is standing still."</div>
+      <div class="mono" style="font-size:9px;color:#333;margin-top:6px;letter-spacing:2px">— TESIS CENTRAL · 2026</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     SLIDE 2 · PERSONA 2 — THE DATA
+═══════════════════════════════════════════ -->
+<div class="slide" id="s2">
+  <div class="imgbg" style="background-image:url('https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=1920&q=85&auto=format');opacity:.12"></div>
+  <div class="overlay overlay-img"></div>
+
+  <div class="ct ct-left" style="position:relative;z-index:3">
+    <div class="stagger-1 mono" style="font-size:10px;letter-spacing:5px;color:var(--g);margin-bottom:14px;animation:pulse 2s ease-in-out infinite">
+      // PERSONA 2 · THE DATA · PRODUCTIVITY GAP
+    </div>
+
+    <h2 class="orb stagger-2" style="font-size:clamp(13px,1.9vw,26px);font-weight:900;color:var(--c);letter-spacing:2px;margin-bottom:16px;text-shadow:0 0 20px rgba(0,245,255,.35)">
+      DOS FUERZAS LABORALES ESTÁN NACIENDO HOY</h2>
+
+    <!-- 3 Big stats -->
+    <div class="stagger-3" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
+      <div class="card card-cyan" style="padding:18px 12px;text-align:center">
+        <div class="stat-num cnt" data-end="6" data-suf="×"
+          style="font-size:clamp(28px,3.5vw,52px);color:var(--c);animation:gc 2.5s ease-in-out infinite">0×</div>
+        <div style="font-size:9px;color:#444;margin-top:8px;line-height:1.5">Brecha productividad<br>frecuentes vs ocasionales</div>
+        <div class="mono" style="font-size:8px;color:#1e1e1e;margin-top:6px;border-top:1px solid #111;padding-top:5px">OpenAI 2025</div>
+      </div>
+      <div class="card card-purple" style="padding:18px 12px;text-align:center">
+        <div class="stat-num cnt" data-end="17" data-suf="×"
+          style="font-size:clamp(28px,3.5vw,52px);color:var(--p);animation:gp 2.5s ease-in-out infinite">0×</div>
+        <div style="font-size:9px;color:#444;margin-top:8px;line-height:1.5">Diferencia output código<br>top users vs promedio</div>
+        <div class="mono" style="font-size:8px;color:#1e1e1e;margin-top:6px;border-top:1px solid #111;padding-top:5px">OpenAI Report</div>
+      </div>
+      <div class="card card-green" style="padding:18px 12px;text-align:center">
+        <div class="stat-num cnt" data-end="24" data-pre="+" data-suf="%"
+          style="font-size:clamp(28px,3.5vw,52px);color:var(--g);animation:gn 2.5s ease-in-out infinite">+0%</div>
+        <div style="font-size:9px;color:#444;margin-top:8px;line-height:1.5">Prima salarial con<br>dominio en IA probado</div>
+        <div class="mono" style="font-size:8px;color:#1e1e1e;margin-top:6px;border-top:1px solid #111;padding-top:5px">Robert Half 2026</div>
+      </div>
+    </div>
+
+    <!-- Chart + video panel -->
+    <div class="stagger-4" style="display:grid;grid-template-columns:1fr 180px;gap:12px;align-items:stretch">
+      <div class="chartBox" style="padding:14px 18px">
+        <div class="mono" style="font-size:8px;color:#2e2e2e;letter-spacing:3px;margin-bottom:10px">AHORRO DE TIEMPO POR TAREA — Indeed 2025 · 80,000 trabajadores</div>
+        <canvas id="prodChart" style="max-height:150px"></canvas>
+      </div>
+      <div style="border-radius:10px;overflow:hidden;border:1px solid rgba(0,245,255,.18);box-shadow:0 0 20px rgba(0,245,255,.1)">
+        <video autoplay muted loop playsinline style="width:100%;height:100%;object-fit:cover;display:block">
+          <source src="WhatsApp_Video_2026-04-02_at_6_13_10_PM.mp4" type="video/mp4">
+        </video>
+      </div>
+    </div>
+
+    <!-- Quote bottom -->
+    <div class="stagger-5" style="margin-top:12px;padding:10px 22px;background:rgba(0,245,255,.05);border:1px solid rgba(0,245,255,.12);border-radius:8px;max-width:100%">
+      <span class="mono" style="font-size:10px;color:#555">The divide is not between those who HAVE AI and those who don't. </span>
+      <span style="font-size:10px;color:var(--c)">Everyone has access. The gap is who made it a </span>
+      <span style="font-size:10px;color:#fff;font-weight:700">daily habit.</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     SLIDE 3 · PERSONA 3 — JOBS TRANSFORM
+═══════════════════════════════════════════ -->
+<div class="slide" id="s3">
+  <video class="vbg" autoplay muted loop playsinline style="opacity:.18">
+    <source src="WhatsApp_Video_2026-04-02_at_6_13_09_PM.mp4" type="video/mp4">
+  </video>
+  <div class="overlay overlay-dark"></div>
+
+  <div class="ct ct-left" style="position:relative;z-index:3">
+    <div class="stagger-1 mono" style="font-size:10px;letter-spacing:5px;color:var(--y);margin-bottom:10px;animation:pulse 2s ease-in-out infinite">
+      // PERSONA 3 · JOBS TRANSFORM · WEF FUTURE OF JOBS
+    </div>
+    <h2 class="orb stagger-2" style="font-size:clamp(12px,1.8vw,22px);font-weight:900;color:var(--y);letter-spacing:2px;margin-bottom:4px;text-shadow:0 0 20px rgba(255,230,0,.3)">
+      WORLD ECONOMIC FORUM · FUTURE OF JOBS REPORT 2025</h2>
+    <div class="mono stagger-2" style="font-size:9px;color:#2a2a2a;margin-bottom:14px;letter-spacing:2px">1,000+ EMPRESAS · 55 PAÍSES · PROYECCIÓN AL 2030</div>
+
+    <!-- WEF Big 3 -->
+    <div class="stagger-3" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px">
+      <div class="card card-green" style="text-align:center;padding:14px 10px">
+        <div style="font-size:22px;margin-bottom:4px">↑</div>
+        <div class="stat-num cnt" data-end="170" data-suf="M"
+          style="font-size:clamp(24px,3vw,44px);color:var(--g);animation:gn 2.5s ease-in-out infinite">0M</div>
+        <div style="font-size:9px;color:#444;margin-top:6px;line-height:1.5">Nuevos empleos<br>creados por IA</div>
+      </div>
+      <div class="card card-pink" style="text-align:center;padding:14px 10px">
+        <div style="font-size:22px;margin-bottom:4px">↓</div>
+        <div class="stat-num cnt" data-end="92" data-suf="M"
+          style="font-size:clamp(24px,3vw,44px);color:var(--pk);animation:gp 2.5s ease-in-out infinite">0M</div>
+        <div style="font-size:9px;color:#444;margin-top:6px;line-height:1.5">Empleos<br>desplazados</div>
+      </div>
+      <div class="card card-cyan" style="text-align:center;padding:14px 10px">
+        <div class="mono" style="font-size:14px;font-weight:700;margin-bottom:4px;color:var(--c)">NET</div>
+        <div class="stat-num cnt" data-end="78" data-pre="+" data-suf="M"
+          style="font-size:clamp(24px,3vw,44px);color:var(--c);animation:gc 2.5s ease-in-out infinite">+0M</div>
+        <div style="font-size:9px;color:#444;margin-top:6px;line-height:1.5">GANANCIA<br>NETA global</div>
+      </div>
+    </div>
+
+    <!-- Jobs grid + video -->
+    <div class="stagger-4" style="display:grid;grid-template-columns:1fr 1fr 185px;gap:10px">
+      <div class="card card-pink" style="padding:13px 15px">
+        <div class="mono" style="font-size:9px;color:var(--pk);letter-spacing:3px;margin-bottom:9px">DESAPARECEN</div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:7px;font-size:10.5px;color:#555"><span style="color:var(--pk)">▼</span>Tareas repetitivas y manuales</div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:7px;font-size:10.5px;color:#555"><span style="color:var(--pk)">▼</span>Proceso manual de datos</div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:7px;font-size:10.5px;color:#555"><span style="color:var(--pk)">▼</span>Revisión de documentos</div>
+        <div style="display:flex;gap:8px;align-items:center;font-size:10.5px;color:#555"><span style="color:var(--pk)">▼</span>Soporte básico nivel 1</div>
+      </div>
+      <div class="card card-green" style="padding:13px 15px">
+        <div class="mono" style="font-size:9px;color:var(--g);letter-spacing:3px;margin-bottom:9px">SE CREAN / MEJORAN</div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:7px;font-size:10.5px;color:#ccc"><span style="color:var(--g)">▲</span>Ingeniería de prompts</div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:7px;font-size:10.5px;color:#ccc"><span style="color:var(--g)">▲</span>Analistas aumentados con IA</div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:7px;font-size:10.5px;color:#ccc"><span style="color:var(--g)">▲</span>Diseñadores + Midjourney</div>
+        <div style="display:flex;gap:8px;align-items:center;font-size:10.5px;color:#ccc"><span style="color:var(--g)">▲</span>Líderes de adopción IA</div>
+      </div>
+      <div style="border-radius:10px;overflow:hidden;border:1px solid rgba(0,245,255,.18)">
+        <video autoplay muted loop playsinline style="width:100%;height:100%;object-fit:cover;display:block">
+          <source src="WhatsApp_Video_2026-04-02_at_6_13_08_PM.mp4" type="video/mp4">
+        </video>
+      </div>
+    </div>
+
+    <!-- Historical analogy -->
+    <div class="stagger-5" style="margin-top:11px;padding:10px 22px;background:rgba(255,230,0,.05);border:1px solid rgba(255,230,0,.18);border-radius:8px">
+      <span style="font-size:10px;color:var(--y)">History: </span>
+      <span style="font-size:10px;color:#888">Industrial Revolution didn't end work — it transformed it. Internet didn't end commerce — it transformed it. </span>
+      <span style="font-size:10px;color:#fff;font-weight:700">AI will not end work. It will transform it again.</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     SLIDE 4 · PERSONA 4 — THE SEPARATOR
+═══════════════════════════════════════════ -->
+<div class="slide" id="s4">
+  <video class="vbg" autoplay muted loop playsinline style="opacity:.14">
+    <source src="WhatsApp_Video_2026-04-02_at_6_13_07_PM.mp4" type="video/mp4">
+  </video>
+  <div class="overlay overlay-dark"></div>
+
+  <div class="ct ct-left" style="position:relative;z-index:3">
+    <div class="stagger-1 mono" style="font-size:10px;letter-spacing:5px;color:var(--g);margin-bottom:14px;animation:pulse 2s ease-in-out infinite">
+      // PERSONA 4 · THE SEPARATOR · DOS TIPOS DE PROFESIONAL
+    </div>
+    <h2 class="orb stagger-2" style="font-size:clamp(14px,2.1vw,28px);font-weight:900;color:#fff;letter-spacing:2px;margin-bottom:16px">
+      DOS TIPOS DE PROFESIONAL — UNA DECISIÓN</h2>
+
+    <!-- Type A vs Type B -->
+    <div class="stagger-3" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:13px">
+      <div class="card card-green" style="padding:18px 20px">
+        <div class="mono" style="font-size:9px;color:var(--g);letter-spacing:3px;margin-bottom:10px">TIPO A · LOS QUE CRECEN · TYPE A</div>
+        <div style="font-size:28px;text-align:center;margin-bottom:10px">📈</div>
+        <div style="display:flex;gap:9px;align-items:center;margin-bottom:7px;font-size:11px;color:#ccc"><span style="color:var(--g);flex-shrink:0">▶</span>Usan IA como multiplicador diario</div>
+        <div style="display:flex;gap:9px;align-items:center;margin-bottom:7px;font-size:11px;color:#ccc"><span style="color:var(--g);flex-shrink:0">▶</span>Ahorran 5+ horas semanales</div>
+        <div style="display:flex;gap:9px;align-items:center;margin-bottom:7px;font-size:11px;color:#ccc"><span style="color:var(--g);flex-shrink:0">▶</span>Salario 18–24% más alto</div>
+        <div style="display:flex;gap:9px;align-items:center;margin-bottom:7px;font-size:11px;color:#ccc"><span style="color:var(--g);flex-shrink:0">▶</span>Oportunidades en expansión</div>
+        <div style="display:flex;gap:9px;align-items:center;font-size:11px;color:#ccc"><span style="color:var(--g);flex-shrink:0">▶</span>Habilidades en evolución continua</div>
+      </div>
+      <div class="card card-pink" style="padding:18px 20px">
+        <div class="mono" style="font-size:9px;color:var(--pk);letter-spacing:3px;margin-bottom:10px">TIPO B · LOS QUE SE ESTANCAN · TYPE B</div>
+        <div style="font-size:28px;text-align:center;margin-bottom:10px">📉</div>
+        <div style="display:flex;gap:9px;align-items:center;margin-bottom:7px;font-size:11px;color:#555"><span style="color:var(--pk);flex-shrink:0">◀</span>Resistencia por miedo o hábito</div>
+        <div style="display:flex;gap:9px;align-items:center;margin-bottom:7px;font-size:11px;color:#555"><span style="color:var(--pk);flex-shrink:0">◀</span>Trabajo manual sin optimización</div>
+        <div style="display:flex;gap:9px;align-items:center;margin-bottom:7px;font-size:11px;color:#555"><span style="color:var(--pk);flex-shrink:0">◀</span>Salario estancado o en declive</div>
+        <div style="display:flex;gap:9px;align-items:center;margin-bottom:7px;font-size:11px;color:#555"><span style="color:var(--pk);flex-shrink:0">◀</span>Oportunidades que se reducen</div>
+        <div style="display:flex;gap:9px;align-items:center;font-size:11px;color:#555"><span style="color:var(--pk);flex-shrink:0">◀</span>Relevancia profesional en caída</div>
+      </div>
+    </div>
+
+    <!-- Bottom stats row -->
+    <div class="stagger-4" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+      <div class="card card-cyan" style="display:flex;align-items:center;gap:12px;padding:11px 15px">
+        <div class="stat-num cnt" data-end="80" data-suf="%"
+          style="font-size:clamp(20px,2.4vw,34px);color:var(--c);flex-shrink:0;animation:gc 2.5s ease-in-out infinite">0%</div>
+        <div style="font-size:9px;color:#444;line-height:1.5">usuarios IA ahorran<br>≥1h diaria (Indeed 2025)</div>
+      </div>
+      <div class="card card-purple" style="display:flex;align-items:center;gap:12px;padding:11px 15px">
+        <div class="stat-num cnt" data-end="72" data-suf="%"
+          style="font-size:clamp(20px,2.4vw,34px);color:var(--p);flex-shrink:0;animation:gp 2.5s ease-in-out infinite">0%</div>
+        <div style="font-size:9px;color:#444;line-height:1.5">empresas exigen<br>fluencia IA al contratar</div>
+      </div>
+      <div class="card card-yellow" style="display:flex;align-items:center;justify-content:center;text-align:center;padding:11px 15px">
+        <div style="font-size:10.5px;color:var(--y);line-height:1.7">EL SEPARADOR NO ES<br>EDUCACIÓN NI EDAD.<br><strong style="color:#fff">ES LA DECISIÓN DE CRECER.</strong></div>
+      </div>
+    </div>
+
+    <!-- BCG quote -->
+    <div class="stagger-5" style="margin-top:11px;padding:10px 22px;border-left:3px solid var(--p);background:rgba(191,0,255,.05);border-radius:0 8px 8px 0">
+      <span style="font-size:10px;color:#777;font-style:italic">"The separator is not intelligence. It is not background. </span>
+      <span style="font-size:10px;color:var(--p);font-style:italic">The separator is the decision to grow."</span>
+      <span class="mono" style="font-size:8px;color:#333;margin-left:8px">— BCG AI Adoption Survey</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     SLIDE 5 · AI TOOLS SHOWCASE (NEW)
+═══════════════════════════════════════════ -->
+<div class="slide" id="s5">
+  <div class="imgbg" style="background-image:url('https://images.unsplash.com/photo-1677442135703-1787eea5ce01?w=1920&q=80&auto=format');opacity:.1"></div>
+  <div class="overlay overlay-img"></div>
+  <div class="mch" style="left:4%;font-size:12px;animation-duration:2.9s;animation-delay:0s;opacity:.15">API</div>
+  <div class="mch" style="left:87%;font-size:13px;animation-duration:3.4s;animation-delay:.7s;opacity:.15">LLM</div>
+
+  <!-- PIP new video -->
+  <div class="pip" style="right:36px;top:20px;width:210px;height:124px">
+    <video autoplay muted loop playsinline style="width:100%;height:100%;object-fit:cover;display:block">
+      <source src="WhatsApp_Video_2026-04-02_at_12_27_28_PM.mp4" type="video/mp4">
+    </video>
+    <div class="pip-label" style="color:var(--g)">// TOOLS LIVE</div>
+  </div>
+
+  <div class="ct ct-center" style="position:relative;z-index:3">
+    <div class="stagger-1 mono" style="font-size:10px;letter-spacing:5px;color:var(--g);margin-bottom:14px;animation:pulse 2s ease-in-out infinite">
+      // TUS ARMAS · YOUR WEAPONS · AI ECOSYSTEM 2026
+    </div>
+    <h2 class="orb stagger-2" style="font-size:clamp(14px,2.2vw,30px);font-weight:900;color:#fff;letter-spacing:2px;margin-bottom:8px">
+      ESTAS SON LAS HERRAMIENTAS QUE CAMBIAN EL JUEGO</h2>
+    <div class="stagger-2" style="font-size:11px;color:#444;letter-spacing:2px;margin-bottom:20px">
+      "A professional with the right AI tools = a one-person army"
+    </div>
+
+    <!-- Tools big grid -->
+    <div class="stagger-3" id="toolsShowcase" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;max-width:900px;width:100%;margin:0 auto 16px"></div>
+
+    <!-- Use cases strip -->
+    <div class="stagger-4" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;max-width:860px">
+      <div class="card" style="padding:8px 16px;font-size:10px;color:var(--c)">Writing & Communication</div>
+      <div class="card" style="padding:8px 16px;font-size:10px;color:var(--p)">Code & Automation</div>
+      <div class="card" style="padding:8px 16px;font-size:10px;color:var(--pk)">Image & Video</div>
+      <div class="card" style="padding:8px 16px;font-size:10px;color:var(--y)">Research & Analysis</div>
+      <div class="card" style="padding:8px 16px;font-size:10px;color:var(--g)">Voice & Audio</div>
+      <div class="card" style="padding:8px 16px;font-size:10px;color:#f97316">Productivity</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     SLIDE 6 · CONCLUSIÓN — YOUR CHOICE
+═══════════════════════════════════════════ -->
+<div class="slide" id="s6">
+  <video class="vbg" autoplay muted loop playsinline style="opacity:.2">
+    <source src="WhatsApp_Video_2026-04-02_at_6_13_06_PM.mp4" type="video/mp4">
+  </video>
+  <div class="overlay overlay-dark"></div>
+  <div class="mch" style="left:3%;animation-duration:2.8s;animation-delay:0s;opacity:.16">∑</div>
+  <div class="mch" style="left:91%;animation-duration:3.5s;animation-delay:.5s;opacity:.16">∞</div>
+  <div class="mch" style="left:96%;animation-duration:2.9s;animation-delay:1.2s;opacity:.16">Ω</div>
+
+  <!-- PIP top-right -->
+  <div class="pip" style="right:36px;top:20px;width:195px;height:115px">
+    <video autoplay muted loop playsinline style="width:100%;height:100%;object-fit:cover;display:block">
+      <source src="WhatsApp_Video_2026-04-02_at_11_13_21_AM.mp4" type="video/mp4">
+    </video>
+    <div class="pip-label" style="color:var(--g)">// FUTURE</div>
+  </div>
+
+  <div class="ct ct-center" style="position:relative;z-index:3">
+    <div class="stagger-1 mono" style="font-size:10px;letter-spacing:5px;color:var(--g);margin-bottom:14px;animation:pulse 2s ease-in-out infinite">
+      // PERSONA 5 · CONCLUSIÓN · YOUR CHOICE
+    </div>
+    <h2 class="orb stagger-2" style="font-size:clamp(14px,2.1vw,28px);font-weight:900;color:#fff;letter-spacing:2px;margin-bottom:18px">
+      EL FUTURO NO ESTÁ PREDETERMINADO · THE FUTURE IS NOT PREDETERMINED</h2>
+
+    <!-- 3 Actions -->
+    <div class="stagger-3" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;width:100%;max-width:920px">
+      <div class="card card-cyan" style="padding:18px 14px">
+        <div class="orb" style="font-size:28px;font-weight:900;color:var(--c);text-shadow:0 0 18px var(--c);margin-bottom:8px;animation:gc 2.5s ease-in-out infinite">01</div>
+        <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:6px">Úsala diario · Use it daily</div>
+        <div style="font-size:10px;color:#444;line-height:1.6">Una tarea hoy, con la IA, no en lugar de ti.<br><em style="color:#333">One task today. With AI, not instead of you.</em></div>
+      </div>
+      <div class="card card-purple" style="padding:18px 14px">
+        <div class="orb" style="font-size:28px;font-weight:900;color:var(--p);text-shadow:0 0 18px var(--p);margin-bottom:8px;animation:gp 2.5s ease-in-out infinite">02</div>
+        <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:6px">Skills humanas · Human skills</div>
+        <div style="font-size:10px;color:#444;line-height:1.6">Creatividad · Liderazgo · Pensamiento crítico<br><em style="color:#333">What AI cannot replace. What employers seek.</em></div>
+      </div>
+      <div class="card card-green" style="padding:18px 14px">
+        <div class="orb" style="font-size:28px;font-weight:900;color:var(--g);text-shadow:0 0 18px var(--g);margin-bottom:8px;animation:gn 2.5s ease-in-out infinite">03</div>
+        <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:6px">Deja de esperar · Stop waiting</div>
+        <div style="font-size:10px;color:#444;line-height:1.6">63% empresas reportan brecha de habilidades.<br><em style="color:#333">Those who fill the gap will win.</em></div>
+      </div>
+    </div>
+
+    <!-- Mini recap pills -->
+    <div class="stagger-4" style="display:flex;gap:7px;justify-content:center;margin-bottom:14px;flex-wrap:wrap">
+      <div class="card" style="padding:6px 13px;display:flex;align-items:center;gap:7px"><span class="orb" style="color:var(--g);font-weight:700;font-size:13px">+78M</span><span style="color:#2a2a2a;font-size:9px">empleos netos 2030</span></div>
+      <div class="card" style="padding:6px 13px;display:flex;align-items:center;gap:7px"><span class="orb" style="color:var(--c);font-weight:700;font-size:13px">6×</span><span style="color:#2a2a2a;font-size:9px">brecha productividad</span></div>
+      <div class="card" style="padding:6px 13px;display:flex;align-items:center;gap:7px"><span class="orb" style="color:var(--pk);font-weight:700;font-size:13px">39%</span><span style="color:#2a2a2a;font-size:9px">skills obsoletas 2030</span></div>
+      <div class="card" style="padding:6px 13px;display:flex;align-items:center;gap:7px"><span class="orb" style="color:var(--y);font-weight:700;font-size:13px">24%+</span><span style="color:#2a2a2a;font-size:9px">salario con IA</span></div>
+    </div>
+
+    <!-- Final question -->
+    <div class="stagger-5" style="padding:20px 30px;border:1px solid rgba(0,245,255,.22);border-top:3px solid var(--c);border-radius:10px;background:rgba(0,0,8,.82);max-width:860px;width:100%">
+      <div class="mono" style="font-size:8px;color:#151515;letter-spacing:4px;margin-bottom:12px">THE ONLY QUESTION THAT MATTERS · LA ÚNICA PREGUNTA QUE IMPORTA</div>
+      <div class="glitch orb" data-text="¿Serás el profesional que crece con la IA..."
+        style="font-size:clamp(12px,1.7vw,21px);font-weight:700;color:var(--c);line-height:1.5;text-shadow:0 0 22px rgba(0,245,255,.5);margin-bottom:6px">
+        ¿Serás el profesional que crece con la IA...</div>
+      <div class="orb" style="font-size:clamp(12px,1.7vw,21px);font-weight:700;color:var(--pk);text-shadow:0 0 22px rgba(255,0,144,.5);line-height:1.5">
+        ...o el que se queda atrás?</div>
+    </div>
+    <div class="mono stagger-6" style="font-size:9px;color:#141414;letter-spacing:4px;margin-top:12px">
+      WEF 2025 · OpenAI 2025 · Indeed 2025 · Robert Half 2026 · BCG
+    </div>
+  </div>
+</div>
+
+</div><!-- end slidesWrap -->
+
+<!-- BOTTOM BAR -->
+<div id="bottomBar">
+  <button class="navBtn" id="btnPrev" onclick="navigate(-1)" disabled>← PREV</button>
+  <div id="kbHint" class="mono">KEYBOARD ← → · CLICK DOTS TO JUMP</div>
+  <button class="navBtn" id="btnNext" onclick="navigate(1)">NEXT →</button>
+</div>
+
+<script>
+/* ════════════════════════════════════════
+   CONFIGURATION
+════════════════════════════════════════ */
+const TOTAL_SLIDES = 7;
+const LABELS = ['PORTADA','THE HOOK','THE DATA','JOBS TRANSFORM','THE SEPARATOR','AI TOOLS','CONCLUSIÓN'];
+
+const TOOLS = [
+  {n:'Claude',c:'#bf00ff',o:'Anthropic'},{n:'Claude Code',c:'#d946ef',o:'Anthropic'},
+  {n:'ChatGPT',c:'#00c8a0',o:'OpenAI'},{n:'GPT-4o',c:'#00ff88',o:'OpenAI'},
+  {n:'DALL·E 3',c:'#4ade80',o:'OpenAI'},{n:'Gemini',c:'#4285f4',o:'Google'},
+  {n:'Copilot',c:'#00adef',o:'Microsoft'},{n:'Llama 3',c:'#ff6b35',o:'Meta'},
+  {n:'Grok',c:'#e2e8f0',o:'xAI'},{n:'Midjourney',c:'#ff0090',o:'MJ'},
+  {n:'Stable Diff',c:'#ffe600',o:'Stability'},{n:'Mistral',c:'#ff4e00',o:'Mistral'},
+  {n:'Perplexity',c:'#20b2aa',o:'Perplexity'},{n:'Sora',c:'#a78bfa',o:'OpenAI'},
+  {n:'Gemma',c:'#34a853',o:'Google'},{n:'Whisper',c:'#64748b',o:'OpenAI'}
+];
+
+const TOKENS = ['<attention>','embedding[512]','transformer','RLHF','RAG','fine-tune',
+  'context_window','gradient','backprop','token_001','softmax','<eos>',
+  'neural_net','LLM','inference','GAN','VAE','LoRA','PEFT','MoE'];
+
+const TOOLS_SHOWCASE = [
+  {n:'Claude',desc:'Writing · Analysis · Code',c:'#bf00ff',icon:'🤖'},
+  {n:'ChatGPT',desc:'General AI · Research',c:'#00c8a0',icon:'💬'},
+  {n:'Gemini',desc:'Google · Multimodal',c:'#4285f4',icon:'♊'},
+  {n:'Copilot',desc:'Microsoft · Office AI',c:'#00adef',icon:'🪟'},
+  {n:'Midjourney',desc:'Image Generation',c:'#ff0090',icon:'🎨'},
+  {n:'DALL·E',desc:'OpenAI · Images',c:'#4ade80',icon:'🖼️'},
+  {n:'Cursor',desc:'AI-first IDE · Code',c:'#ffe600',icon:'⌨️'},
+  {n:'Perplexity',desc:'AI Search Engine',c:'#20b2aa',icon:'🔍'},
+];
+
+/* ════════════════════════════════════════
+   BUILD PORTADA TOOL BADGES
+════════════════════════════════════════ */
+const tr = document.getElementById('toolsGrid');
+TOOLS.forEach((t, i) => {
+  const d = document.createElement('div');
+  d.style.cssText = `border:1px solid ${t.c}44;background:${t.c}0d;border-radius:5px;padding:5px 13px;font-size:10px;color:${t.c};box-shadow:0 0 8px ${t.c}22;font-family:'Share Tech Mono',monospace;animation:pulse ${1.4+i*.13}s ease-in-out ${i*.06}s infinite`;
+  d.innerHTML = `${t.n} <span style="color:#1e1e1e;font-size:8px">${t.o}</span>`;
+  tr.appendChild(d);
+});
+
+const tkr = document.getElementById('tokensRow');
+TOKENS.forEach((t, i) => {
+  const s = document.createElement('span');
+  s.style.cssText = `background:rgba(191,0,255,.1);border:1px solid rgba(191,0,255,.28);border-radius:4px;padding:2px 8px;font-size:9px;color:#bf00ff;display:inline-block;animation:pipFloat ${1.8+i*.16}s ease-in-out ${i*.08}s infinite;font-family:'Share Tech Mono',monospace`;
+  s.textContent = t;
+  tkr.appendChild(s);
+});
+
+/* ════════════════════════════════════════
+   BUILD TOOLS SHOWCASE (SLIDE 5)
+════════════════════════════════════════ */
+const ts = document.getElementById('toolsShowcase');
+TOOLS_SHOWCASE.forEach((t, i) => {
+  const d = document.createElement('div');
+  d.style.cssText = `border-radius:10px;padding:14px 12px;text-align:center;border:1px solid ${t.c}33;background:rgba(0,0,8,.7);backdrop-filter:blur(12px);box-shadow:0 0 20px ${t.c}15;animation:slideIn .6s cubic-bezier(.4,0,.2,1) ${.05+i*.08}s both;transition:transform .3s,box-shadow .3s;cursor:default`;
+  d.innerHTML = `<div style="font-size:26px;margin-bottom:8px">${t.icon}</div><div style="font-family:'Orbitron',sans-serif;font-size:11px;font-weight:700;color:${t.c};margin-bottom:4px">${t.n}</div><div style="font-size:9px;color:#333;line-height:1.5">${t.desc}</div>`;
+  d.onmouseenter = () => { d.style.transform='translateY(-6px)'; d.style.boxShadow=`0 16px 40px ${t.c}30`; };
+  d.onmouseleave = () => { d.style.transform=''; d.style.boxShadow=`0 0 20px ${t.c}15`; };
+  ts.appendChild(d);
+});
+
+/* ════════════════════════════════════════
+   SLIDE NAVIGATION
+════════════════════════════════════════ */
+const slides = document.querySelectorAll('.slide');
+const dotsEl = document.getElementById('topDots');
+const counterEl = document.getElementById('slideCounter');
+const progressBar = document.getElementById('progressBar');
+const btnPrev = document.getElementById('btnPrev');
+const btnNext = document.getElementById('btnNext');
+let current = 0;
+
+// Build dots
+slides.forEach((_, i) => {
+  const b = document.createElement('button');
+  b.className = 'dot-nav' + (i === 0 ? ' on' : '');
+  b.style.cssText = `background:${i===0?'var(--c)':'rgba(0,245,255,.2)'};box-shadow:${i===0?'0 0 12px var(--c)':'none'}`;
+  b.onclick = () => jump(i);
+  dotsEl.appendChild(b);
+});
+
+function jump(n) {
+  slides[current].classList.remove('active');
+  dotsEl.children[current].classList.remove('on');
+  dotsEl.children[current].style.cssText = 'background:rgba(0,245,255,.2);box-shadow:none';
+
+  current = n;
+  const slide = slides[current];
+  slide.classList.add('active', 'entering');
+  slide.addEventListener('animationend', () => slide.classList.remove('entering'), { once: true });
+
+  dotsEl.children[current].classList.add('on');
+  dotsEl.children[current].style.cssText = 'background:var(--c);box-shadow:0 0 12px var(--c)';
+
+  counterEl.innerHTML = `<span style="color:var(--c)">${String(current+1).padStart(2,'0')}</span><span style="color:#1a1a1a"> / </span>${String(slides.length).padStart(2,'0')}<span style="color:#111;font-size:9px;margin-left:6px">${LABELS[current]}</span>`;
+
+  progressBar.style.width = `${((current+1)/slides.length)*100}%`;
+  btnPrev.disabled = current === 0;
+  btnNext.disabled = current === slides.length - 1;
+
+  triggerSlideAnims();
+}
+
+function navigate(dir) {
+  const n = current + dir;
+  if (n >= 0 && n < slides.length) jump(n);
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') navigate(1);
+  if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   navigate(-1);
+});
+
+/* ════════════════════════════════════════
+   SLIDE ANIMATIONS
+════════════════════════════════════════ */
+function triggerSlideAnims() {
+  // Count-up numbers
+  slides[current].querySelectorAll('.cnt').forEach(el => {
+    const end = +el.dataset.end;
+    const suf = el.dataset.suf || '';
+    const pre = el.dataset.pre || '';
+    let v = 0;
+    const step = end / 70;
+    el.textContent = pre + '0' + suf;
+    const id = setInterval(() => {
+      v = Math.min(v + step, end);
+      el.textContent = pre + Math.floor(v).toLocaleString() + suf;
+      if (v >= end) { clearInterval(id); el.style.animation += ',countPop .3s ease'; }
+    }, 16);
+  });
+
+  // Animated bars
+  slides[current].querySelectorAll('.bar-fill').forEach((el, i) => {
+    el.style.width = '0';
+    setTimeout(() => { el.style.width = el.dataset.pct + '%'; }, i * 200 + 100);
+  });
+
+  // Init Chart.js on slide 2
+  if (current === 2) initProductivityChart();
+}
+
+/* ════════════════════════════════════════
+   CHART.JS — PRODUCTIVITY CHART
+════════════════════════════════════════ */
+let chartInstance = null;
+function initProductivityChart() {
+  const canvas = document.getElementById('prodChart');
+  if (!canvas || !window.Chart) return;
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+
+  chartInstance = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: ['Writing','Research','Code','Decisions','Design'],
+      datasets: [{
+        label: '% time saved with AI',
+        data: [87, 81, 74, 72, 68],
+        backgroundColor: ['#00f5ff22','#bf00ff22','#00ff8822','#ff009022','#ffe60022'],
+        borderColor:     ['#00f5ff','#bf00ff','#00ff88','#ff0090','#ffe600'],
+        borderWidth: 2,
+        borderRadius: 6,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 1800, easing: 'easeOutQuart' },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => `  ${ctx.raw}% time saved`
+          },
+          backgroundColor: 'rgba(0,0,8,.95)',
+          borderColor: '#00f5ff44',
+          borderWidth: 1,
+          titleColor: '#00f5ff',
+          bodyColor: '#aaa',
+          titleFont: { family: 'Share Tech Mono', size: 11 },
+          bodyFont: { family: 'Share Tech Mono', size: 10 },
+          padding: 10
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,.04)' },
+          ticks: { color: '#555', font: { family: 'Share Tech Mono', size: 10 } }
+        },
+        y: {
+          min: 0, max: 100,
+          grid: { color: 'rgba(0,245,255,.06)' },
+          ticks: {
+            color: '#444',
+            font: { family: 'Share Tech Mono', size: 9 },
+            callback: v => v + '%'
+          }
+        }
+      }
+    }
+  });
+}
+
+/* ════════════════════════════════════════
+   TYPEWRITER EFFECT (Slide 0)
+════════════════════════════════════════ */
+const TW_TEXTS = [
+  'La IA no reemplaza personas.',
+  'AI separates those who grow...',
+  '...from those who choose to stay behind.',
+  'The real question is not: "Will AI replace me?"',
+  '"Will someone who uses AI better than me replace me?"',
+  'The gap is growing every single day.',
+];
+let twIdx = 0, twChars = 0, twDeleting = false;
+const twEl = document.getElementById('typewriterText');
+
+function typewriterTick() {
+  const text = TW_TEXTS[twIdx];
+  if (!twDeleting && twChars < text.length) {
+    twChars++;
+    twEl.textContent = text.slice(0, twChars);
+    setTimeout(typewriterTick, 58);
+  } else if (!twDeleting && twChars === text.length) {
+    setTimeout(() => { twDeleting = true; typewriterTick(); }, 2200);
+  } else if (twDeleting && twChars > 0) {
+    twChars--;
+    twEl.textContent = text.slice(0, twChars);
+    setTimeout(typewriterTick, 28);
+  } else {
+    twDeleting = false;
+    twIdx = (twIdx + 1) % TW_TEXTS.length;
+    setTimeout(typewriterTick, 400);
+  }
+}
+setTimeout(typewriterTick, 1200);
+
+/* ════════════════════════════════════════
+   NEURAL NETWORK CANVAS
+════════════════════════════════════════ */
+const cv = document.getElementById('neuralCanvas');
+const ctx2d = cv.getContext('2d');
+let frameT = 0;
+
+function resizeCanvas() {
+  cv.width = window.innerWidth;
+  cv.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+const N_NODES = 80;
+const nodes = Array.from({length: N_NODES}, () => ({
+  x: Math.random() * window.innerWidth,
+  y: Math.random() * window.innerHeight,
+  vx: (Math.random() - .5) * .45,
+  vy: (Math.random() - .5) * .45,
+  r: Math.random() * 2.2 + .7,
+  col: ['#00f5ff','#bf00ff','#ff0090','#00ff88','#ffe600'][Math.floor(Math.random() * 5)]
+}));
+const pulses = [];
+
+function drawNeural() {
+  frameT++;
+  ctx2d.fillStyle = 'rgba(0,0,8,.13)';
+  ctx2d.fillRect(0, 0, cv.width, cv.height);
+
+  // Move nodes
+  nodes.forEach(n => {
+    n.x += n.vx; n.y += n.vy;
+    if (n.x < 0 || n.x > cv.width)  n.vx *= -1;
+    if (n.y < 0 || n.y > cv.height) n.vy *= -1;
+  });
+
+  // Draw edges
+  for (let i = 0; i < N_NODES; i++) {
+    for (let j = i + 1; j < N_NODES; j++) {
+      const dx = nodes[i].x - nodes[j].x;
+      const dy = nodes[i].y - nodes[j].y;
+      const d = Math.hypot(dx, dy);
+      if (d < 155) {
+        ctx2d.strokeStyle = `rgba(0,245,255,${(1-d/155)*.22})`;
+        ctx2d.lineWidth = .5;
+        ctx2d.beginPath();
+        ctx2d.moveTo(nodes[i].x, nodes[i].y);
+        ctx2d.lineTo(nodes[j].x, nodes[j].y);
+        ctx2d.stroke();
+      }
+    }
+  }
+
+  // Draw nodes
+  nodes.forEach(n => {
+    ctx2d.shadowBlur = 12;
+    ctx2d.shadowColor = n.col;
+    ctx2d.fillStyle = n.col;
+    ctx2d.beginPath();
+    ctx2d.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+    ctx2d.fill();
+    ctx2d.shadowBlur = 0;
+  });
+
+  // Signal pulses
+  if (frameT % 18 === 0 && pulses.length < 28) {
+    const i = Math.floor(Math.random() * N_NODES);
+    const j = Math.floor(Math.random() * N_NODES);
+    if (i !== j) pulses.push({i, j, p: 0, col: ['#ff0090','#ffe600','#bf00ff','#00f5ff'][Math.floor(Math.random()*4)]});
+  }
+  for (let k = pulses.length - 1; k >= 0; k--) {
+    const pulse = pulses[k];
+    pulse.p += .016;
+    if (pulse.p >= 1) { pulses.splice(k, 1); continue; }
+    const ni = nodes[pulse.i], nj = nodes[pulse.j];
+    const px = ni.x + (nj.x - ni.x) * pulse.p;
+    const py = ni.y + (nj.y - ni.y) * pulse.p;
+    ctx2d.shadowBlur = 18;
+    ctx2d.shadowColor = pulse.col;
+    ctx2d.fillStyle = pulse.col;
+    ctx2d.beginPath();
+    ctx2d.arc(px, py, 3.8, 0, Math.PI * 2);
+    ctx2d.fill();
+    ctx2d.shadowBlur = 0;
+  }
+
+  requestAnimationFrame(drawNeural);
+}
+drawNeural();
+
+/* ════════════════════════════════════════
+   INIT
+════════════════════════════════════════ */
+jump(0);
+</script>
+</body>
+</html>
